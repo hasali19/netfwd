@@ -21,19 +21,29 @@ pub struct Session {
 }
 
 impl Session {
-    pub async fn begin(cli: TcpStream, cli_addr: SocketAddr, options: Arc<Options>) -> Session {
+    pub async fn begin(
+        cli: TcpStream,
+        cli_addr: SocketAddr,
+        options: Arc<Options>,
+    ) -> Option<Session> {
         info!("connecting to server at '{}'", options.srv_addr);
 
-        let srv = TcpStream::connect(options.srv_addr).await.unwrap();
+        let srv = match TcpStream::connect(options.srv_addr).await {
+            Ok(srv) => srv,
+            Err(e) => {
+                error!("failed to connect to '{}': {}", options.srv_addr, e);
+                return None;
+            }
+        };
 
-        Session {
+        Some(Session {
             cli,
             srv,
             cli_addr,
             srv_addr: options.srv_addr,
             req_buf: vec![0; options.buf_size],
             res_buf: vec![0; options.buf_size],
-        }
+        })
     }
 
     pub async fn run(mut self) {
